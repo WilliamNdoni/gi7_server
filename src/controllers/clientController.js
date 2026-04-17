@@ -195,7 +195,6 @@ export const mpesaCallback = async (req, res) => {
   try {
     const callback = req.body?.Body?.stkCallback;
 
-    // Safety check: ensure structure exists
     if (!callback) {
       console.log("Invalid callback payload:", req.body);
       return res.status(200).json({ ResultCode: 0, ResultDesc: "Accepted" });
@@ -220,8 +219,6 @@ export const mpesaCallback = async (req, res) => {
 
       const mpesaRef = getValue("MpesaReceiptNumber");
       const amount = getValue("Amount");
-      const transactionDate = getValue("TransactionDate");
-      const phoneNumber = getValue("PhoneNumber");
 
       // Find pending STK request
       const stkResult = await pool.query(
@@ -237,33 +234,81 @@ export const mpesaCallback = async (req, res) => {
 
       const { client_id } = stkResult.rows[0];
 
+      // get plan_type and first_due_date
+      const clientResult = await pool.query(
+        `SELECT c.plan_type, c.first_due_date 
+         FROM clients c WHERE c.id = $1`,
+        [client_id]
+      );
+
+      if (clientResult.rows.length === 0) {
+        console.log("Client not found for client_id:", client_id);
+        return res.status(200).json({ ResultCode: 0, ResultDesc: "Accepted" });
+      }
+
+      const { plan_type, first_due_date } = clientResult.rows[0];
+
+      // get latest payment
+      const latestPayment = await pool.query(
+        `SELECT due_date FROM payments
+         WHERE client_id = $1
+         ORDER BY due_date DESC
+         LIMIT 1`,
+        [client_id]
+      );
+
+      let newDueDate;
+
+      if (latestPayment.rows.length === 0) {
+        // first payment ever
+        if (first_due_date) {
+          const firstDue = new Date(first_due_date);
+          const now = new Date();
+
+          if (now < firstDue) {
+            // paid before first_due_date — their current sub isn't over
+            // next due = first_due_date + interval
+            newDueDate = new Date(first_due_date);
+            if (plan_type === "monthly") {
+              newDueDate.setMonth(newDueDate.getMonth() + 1);
+            } else {
+              newDueDate.setDate(newDueDate.getDate() + 7);
+            }
+          } else {
+            // paid after first_due_date — old sub expired, start fresh from now
+            newDueDate = new Date();
+            newDueDate.setHours(0, 0, 0, 0);
+            if (plan_type === "monthly") {
+              newDueDate.setMonth(newDueDate.getMonth() + 1);
+            } else {
+              newDueDate.setDate(newDueDate.getDate() + 7);
+            }
+          }
+        } else {
+          // no first_due_date set — fresh client, calculate from now
+          newDueDate = new Date();
+          newDueDate.setHours(0, 0, 0, 0);
+          if (plan_type === "monthly") {
+            newDueDate.setMonth(newDueDate.getMonth() + 1);
+          } else {
+            newDueDate.setDate(newDueDate.getDate() + 7);
+          }
+        }
+      } else {
+        // subsequent payment — advance from last due_date
+        newDueDate = new Date(latestPayment.rows[0].due_date);
+        if (plan_type === "monthly") {
+          newDueDate.setMonth(newDueDate.getMonth() + 1);
+        } else {
+          newDueDate.setDate(newDueDate.getDate() + 7);
+        }
+      }
+
       // Insert confirmed payment
       await pool.query(
-        `INSERT INTO payments (
-            client_id,
-            amount,
-            method,
-            mpesa_ref,
-            status,
-            paid_date,
-            due_date
-         )
-         VALUES (
-            $1,
-            $2,
-            'mpesa',
-            $3,
-            'paid',
-            NOW(),
-            COALESCE(
-              (SELECT due_date FROM payments
-               WHERE client_id = $1
-               ORDER BY due_date DESC
-               LIMIT 1),
-              NOW()
-            ) + INTERVAL '1 month'
-         )`,
-        [client_id, amount, mpesaRef]
+        `INSERT INTO payments (client_id, amount, method, mpesa_ref, status, paid_date, due_date)
+         VALUES ($1, $2, 'mpesa', $3, 'paid', NOW(), $4)`,
+        [client_id, amount, mpesaRef, newDueDate]
       );
 
       // Mark STK request as completed
@@ -289,15 +334,12 @@ export const mpesaCallback = async (req, res) => {
       console.log("Payment failed/cancelled:", resultDesc);
     }
 
-    // ALWAYS respond 200 to Safaricom
     return res.status(200).json({
       ResultCode: 0,
       ResultDesc: "Accepted",
     });
   } catch (err) {
     console.error("M-Pesa callback error:", err);
-
-    // STILL respond 200 so Safaricom doesn't retry endlessly
     return res.status(200).json({
       ResultCode: 0,
       ResultDesc: "Accepted",

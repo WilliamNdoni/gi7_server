@@ -72,6 +72,11 @@ export const sendClientApprovalPending = async (user) => {
 // notify client their account has been approved
 export const sendClientApproved = async (user, plan) => {
   try {
+    const startDate = new Date().toLocaleDateString("en-KE", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: user.email,
@@ -87,7 +92,7 @@ export const sendClientApproved = async (user, plan) => {
             </tr>
             <tr>
               <td style="padding: 8px; font-weight: bold;">Start Date</td>
-              <td style="padding: 8px;">${plan.start_date}</td>
+              <td style="padding: 8px;">${startDate}</td>
             </tr>
           </table>
           <p>You can now log in to your dashboard to track your payments.</p>

@@ -24,12 +24,20 @@ const createTables = async () => {
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         plan_type VARCHAR(50) DEFAULT NULL,
         start_date DATE DEFAULT NULL,
+        first_due_date DATE DEFAULT NULL,
         status VARCHAR(20) DEFAULT 'pending',
         trainer_id INTEGER REFERENCES users(id),
         created_at TIMESTAMP DEFAULT NOW()
       )
     `)
     console.log("Clients table ready")
+
+    // Adding a new column in client table
+    await pool.query(`
+      ALTER TABLE clients
+      ADD COLUMN IF NOT EXISTS first_due_date DATE DEFAULT NULL; 
+    `)
+      console.log("Old Clients table updated with first_due_date")
 
     // payments table
     await pool.query(`
