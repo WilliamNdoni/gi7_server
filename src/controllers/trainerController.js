@@ -137,7 +137,7 @@ export const getClientPayments = async (req, res) => {
       `SELECT p.id, p.amount, p.paid_date, p.due_date, p.method, p.mpesa_ref
        FROM payments p
        JOIN clients c ON p.client_id = c.id
-       WHERE p.client_id = $1 AND c.trainer_id = $2
+       WHERE p.client_id = $1 AND c.trainer_id = $2 AND p.status = 'paid'
        ORDER BY p.paid_date DESC`,
       [clientId, req.user.id]
     );
@@ -177,7 +177,7 @@ export const activateClient = async (req, res) => {
 
     // activate client
     await pool.query(
-      `UPDATE clients SET status = 'active' WHERE user_id = $1`,
+      `UPDATE clients SET status = 'active' WHERE id = $1`,
       [clientUserId]
     );
 
@@ -196,7 +196,7 @@ export const deactivateClient = async (req, res) => {
 
   try {
     await pool.query(
-      `UPDATE clients SET status = 'inactive' WHERE user_id = $1`,
+      `UPDATE clients SET status = 'inactive' WHERE id = $1`,
       [clientUserId]
     )
 

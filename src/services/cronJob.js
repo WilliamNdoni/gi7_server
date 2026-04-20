@@ -18,7 +18,7 @@ const startCronJobs = () => {
          JOIN clients c ON u.id = c.user_id
          JOIN payments p ON c.id = p.client_id
          WHERE c.status = 'active'
-         ORDER BY c.id, p.paid_date DESC`
+         ORDER BY c.id, p.due_date DESC`
       )
 
       const clients = result.rows

@@ -1,5 +1,6 @@
 import pool from "../config/db.js";
 import { stkPush } from "../services/mpesaService.js"
+import { sendCashPaymentRequestToTrainer, sendCashPaymentRequestToClient } from "../services/emailService.js";
 
 // get client dashboard
 export const getDashboard = async (req, res) => {
@@ -24,7 +25,7 @@ export const getDashboard = async (req, res) => {
     const latestPayment = await pool.query(
       `SELECT * FROM payments
        WHERE client_id = $1
-       ORDER BY paid_date DESC
+       ORDER BY due_date DESC
        LIMIT 1`,
       [client.client_id]
     )
@@ -33,7 +34,7 @@ export const getDashboard = async (req, res) => {
     const paymentHistory = await pool.query(
       `SELECT * FROM payments
        WHERE client_id = $1
-       ORDER BY paid_date DESC`,
+       ORDER BY due_date DESC`,
       [client.client_id]
     )
 
@@ -66,7 +67,7 @@ export const getPaymentHistory = async (req, res) => {
     const payments = await pool.query(
       `SELECT * FROM payments
        WHERE client_id = $1
-       ORDER BY paid_date DESC`,
+       ORDER BY due_date DESC`,
       [clientId]
     )
 
@@ -81,7 +82,8 @@ export const getPaymentHistory = async (req, res) => {
 export const getNextDueDate = async (req, res) => {
   try {
     const clientResult = await pool.query(
-      `SELECT c.id as client_id FROM clients c
+      `SELECT c.id as client_id, c.first_due_date
+       FROM clients c
        WHERE c.user_id = $1`,
       [req.user.id]
     )
@@ -90,22 +92,30 @@ export const getNextDueDate = async (req, res) => {
       return res.status(404).json({ message: "Client not found" })
     }
 
-    const clientId = clientResult.rows[0].client_id
+    const { client_id, first_due_date } = clientResult.rows[0]
 
     // get latest payment due date
     const latestPayment = await pool.query(
       `SELECT due_date FROM payments
        WHERE client_id = $1
-       ORDER BY paid_date DESC
+       ORDER BY due_date DESC
        LIMIT 1`,
-      [clientId]
+      [client_id]
     )
 
-    if (latestPayment.rows.length === 0) {
-      return res.json({ dueDate: null, message: "No payments found" })
+    let dueDate
+
+    if (latestPayment.rows.length > 0) {
+      // has payments — use the latest due date
+      dueDate = latestPayment.rows[0].due_date
+    } else if (first_due_date) {
+      // no payments yet but trainer set a first due date — use it
+      dueDate = first_due_date
+    } else {
+      // nothing at all — truly no due date to show
+      return res.json({ dueDate: null, daysLeft: null, isOverdue: false })
     }
 
-    const dueDate = latestPayment.rows[0].due_date
     const now = new Date()
     const due = new Date(dueDate)
     const daysLeft = Math.ceil((due - now) / (1000 * 60 * 60 * 24))
@@ -120,7 +130,6 @@ export const getNextDueDate = async (req, res) => {
     res.status(500).json({ message: "Server error" })
   }
 }
-
 
 // POST /client/payments/stk
 export const initiateMpesaPayment = async (req, res) => {
@@ -192,6 +201,7 @@ export const getMpesaStatus = async (req, res) => {
 
 // POST /client/payments/stk/callback
 export const mpesaCallback = async (req, res) => {
+  
   try {
     const callback = req.body?.Body?.stkCallback;
 
@@ -347,67 +357,39 @@ export const mpesaCallback = async (req, res) => {
   }
 };
 
-// // POST /client/payments/stk/callback  ← called by Safaricom, no auth middleware (v1)
-// export const mpesaCallback = async (req, res) => {
-//   try {
-//     const { Body } = req.body;
-//     const callback = Body.stkCallback;
-//     const checkoutRequestId = callback.CheckoutRequestID;
-//     const resultCode = callback.ResultCode;
+// POST /client/payments/cash-request
+export const cashPaymentRequest = async (req, res) => {
+  const { amount } = req.body;
 
-//     if (resultCode === 0) {
-//       // payment succeeded — extract metadata
-//       const meta = callback.CallbackMetadata.Item;
-//       const getValue = (name) =>
-//         meta.find((i) => i.Name === name)?.Value ?? null;
+  if (!amount) {
+    return res.status(400).json({ message: "Amount is required" });
+  }
 
-//       const mpesaRef = getValue("MpesaReceiptNumber");
-//       const amount = getValue("Amount");
+  try {
+    // get client info for the email
+    const result = await pool.query(
+      `SELECT u.full_name, u.email, u.phone
+       FROM users u
+       JOIN clients c ON u.id = c.user_id
+       WHERE u.id = $1`,
+      [req.user.id]
+    );
 
-//       // look up pending request
-//       const stkResult = await pool.query(
-//         `SELECT client_id, amount FROM mpesa_stk_requests
-//          WHERE checkout_request_id = $1`,
-//         [checkoutRequestId]
-//       );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Client not found" });
+    }
 
-//       if (stkResult.rows.length === 0) {
-//         return res.status(404).json({ message: "STK request not found" });
-//       }
+    const client = result.rows[0];
 
-//       const { client_id } = stkResult.rows[0];
+    // send email to trainer + confirmation to client
+    await Promise.all([
+      sendCashPaymentRequestToTrainer(client, amount),
+      sendCashPaymentRequestToClient(client, amount),
+    ]);
 
-//       // insert confirmed payment
-//       await pool.query(
-//         `INSERT INTO payments (client_id, amount, method, mpesa_ref, status, due_date)
-//          VALUES ($1, $2, 'mpesa', $3, 'paid',
-//            (SELECT due_date FROM payments
-//             WHERE client_id = $1
-//             ORDER BY due_date DESC LIMIT 1) + INTERVAL '1 month'
-//          )`,
-//         [client_id, amount, mpesaRef]
-//       );
-
-//       // mark STK request as completed
-//       await pool.query(
-//         `UPDATE mpesa_stk_requests SET status = 'completed'
-//          WHERE checkout_request_id = $1`,
-//         [checkoutRequestId]
-//       );
-//     } else {
-//       // payment failed or cancelled
-//       await pool.query(
-//         `UPDATE mpesa_stk_requests SET status = 'failed'
-//          WHERE checkout_request_id = $1`,
-//         [checkoutRequestId]
-//       );
-//     }
-
-//     console.log("Payment data received");
-//     // always respond 200 to Safaricom
-//     res.status(200).json({ ResultCode: 0, ResultDesc: "Accepted" });
-//   } catch (err) {
-//     console.error("M-Pesa callback error", err);
-//     res.status(200).json({ ResultCode: 0, ResultDesc: "Accepted" });
-//   }
-// };
+    res.json({ message: "Cash payment request sent" });
+  } catch (err) {
+    console.error("Cash payment request error", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};

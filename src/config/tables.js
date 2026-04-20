@@ -37,7 +37,7 @@ const createTables = async () => {
       ALTER TABLE clients
       ADD COLUMN IF NOT EXISTS first_due_date DATE DEFAULT NULL; 
     `)
-      console.log("Old Clients table updated with first_due_date")
+    console.log("Old Clients table updated with first_due_date")
 
     // payments table
     await pool.query(`
@@ -55,7 +55,7 @@ const createTables = async () => {
     `)
     console.log("Payments table ready")
 
-    // Table to track pending states btwn push and callback
+    // mpesa stk requests table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS mpesa_stk_requests (
         id SERIAL PRIMARY KEY,
@@ -68,6 +68,18 @@ const createTables = async () => {
       )
     `)
     console.log("mpesa_stk table ready")
+
+    // refresh tokens table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS refresh_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT UNIQUE NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    console.log("refresh_tokens table ready")
 
   } catch (err) {
     console.error("Error creating tables", err)

@@ -1,6 +1,8 @@
 import express from "express"
 import cors from "cors"
 import dotenv from "dotenv"
+import cookieParser from "cookie-parser"
+
 import pool from "./config/db.js"
 import createTables from "./config/tables.js"
 import startCronJobs from "./services/cronJob.js"
@@ -8,6 +10,8 @@ import startCronJobs from "./services/cronJob.js"
 import authRoutes from "./routes/auth.js"
 import trainerRoutes from "./routes/trainer.js"
 import clientRoutes from "./routes/client.js"
+
+import { generalLimiter } from "./middleware/rateLimiter.js"
 
 dotenv.config()
 
@@ -20,6 +24,10 @@ app.use(cors({
   credentials: true,
 }))
 app.use(express.json())
+app.use(cookieParser())
+
+// general rate limiter applied to all routes as a baseline protection against abuse and DDoS
+app.use(generalLimiter)
 
 // routes
 app.use("/api/auth", authRoutes)
@@ -35,7 +43,6 @@ app.get("/", (req, res) => {
 app.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`)
 
-  // test database connection
   try {
     await pool.query("SELECT NOW()")
     console.log("Database connection verified")

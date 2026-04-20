@@ -3,7 +3,6 @@ import dotenv from "dotenv"
 
 dotenv.config()
 
-// create transporter
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -12,34 +11,117 @@ const transporter = nodemailer.createTransport({
   },
 })
 
-// notify admin when a new client registers
+// getting the image logo from cloudinary
+const LOGO_URL = "https://res.cloudinary.com/daqnekpeo/image/upload/v1776677303/G7_logo_gkuex4.jpg"
+
+// ─── Shared email wrapper ───────────────────────────────────────────────────
+const emailTemplate = (bodyContent) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Generation Iron 7</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0a0a0a;font-family:Arial,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0a;padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+          <!-- HEADER -->
+          <tr>
+            <td align="center" style="background-color:#111111;border-radius:12px 12px 0 0;padding:36px 40px 24px;">
+              <img
+                src="${LOGO_URL}"
+                alt="Generation Iron 7"
+                width="120"
+                style="display:block;margin:0 auto 16px;"
+              />
+              <div style="height:1px;background:linear-gradient(to right,transparent,#888,transparent);margin:0 auto;width:80%;"></div>
+            </td>
+          </tr>
+
+          <!-- BODY -->
+          <tr>
+            <td style="background-color:#161616;padding:36px 40px;">
+              ${bodyContent}
+            </td>
+          </tr>
+
+          <!-- FOOTER -->
+          <tr>
+            <td align="center" style="background-color:#111111;border-radius:0 0 12px 12px;padding:20px 40px;">
+              <p style="margin:0;font-size:12px;color:#555555;">
+                Generation Iron 7 &nbsp;•&nbsp; Nairobi, Kenya
+              </p>
+              <p style="margin:6px 0 0;font-size:11px;color:#3a3a3a;">
+                This is an automated message. Please do not reply directly to this email.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
+`
+
+// ─── Shared sub-components ──────────────────────────────────────────────────
+const heading = (text) =>
+  `<h2 style="margin:0 0 16px;font-size:22px;font-weight:bold;color:#ffffff;letter-spacing:0.5px;">${text}</h2>`
+
+const paragraph = (text) =>
+  `<p style="margin:0 0 16px;font-size:15px;color:#bbbbbb;line-height:1.7;">${text}</p>`
+
+const divider = () =>
+  `<div style="height:1px;background:linear-gradient(to right,transparent,#444,transparent);margin:24px 0;"></div>`
+
+const infoTable = (rows) => `
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;">
+    ${rows.map(([label, value], i) => `
+      <tr style="background-color:${i % 2 === 0 ? "#1e1e1e" : "#1a1a1a"};">
+        <td style="padding:12px 16px;font-size:13px;color:#888888;font-weight:bold;width:40%;border-radius:${i === 0 ? "6px 0 0 0" : i === rows.length - 1 ? "0 0 0 6px" : "0"};">${label}</td>
+        <td style="padding:12px 16px;font-size:14px;color:#ffffff;border-radius:${i === 0 ? "0 6px 0 0" : i === rows.length - 1 ? "0 0 6px 0" : "0"};">${value}</td>
+      </tr>
+    `).join("")}
+  </table>
+`
+
+const ctaButton = (text, url = "#") =>
+  `<div style="text-align:center;margin:28px 0 8px;">
+    <a href="${url}" style="display:inline-block;background-color:#ffffff;color:#000000;font-weight:bold;font-size:14px;padding:14px 36px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">${text}</a>
+  </div>`
+
+const badge = (text, color = "#ffffff") =>
+  `<span style="display:inline-block;background-color:#1e1e1e;border:1px solid #333;color:${color};font-size:12px;font-weight:bold;padding:4px 12px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;">${text}</span>`
+
+
+// ─── 1. Admin — new client registration ────────────────────────────────────
 export const sendAdminNotification = async (user) => {
   try {
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: `"Generation Iron 7" <${process.env.EMAIL_USER}>`,
       to: process.env.ADMIN_EMAIL,
-      subject: "New Client Registration - GenerationIron7",
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>New Client Registration</h2>
-          <p>A new client has registered and is awaiting your approval.</p>
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-              <td style="padding: 8px; font-weight: bold;">Name</td>
-              <td style="padding: 8px;">${user.full_name}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px; font-weight: bold;">Email</td>
-              <td style="padding: 8px;">${user.email}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px; font-weight: bold;">Phone</td>
-              <td style="padding: 8px;">${user.phone}</td>
-            </tr>
-          </table>
-          <p>Log in to your dashboard to approve this client.</p>
-        </div>
-      `,
+      subject: "New Client Registration — Generation Iron 7",
+      html: emailTemplate(`
+        ${heading("New Client Registration")}
+        ${paragraph("A new client has registered and is awaiting your approval.")}
+        ${divider()}
+        ${infoTable([
+          ["Name", user.full_name],
+          ["Email", user.email],
+          ["Phone", user.phone],
+          ["Status", "Pending Approval"],
+        ])}
+        ${divider()}
+        ${paragraph("Log in to your dashboard to review and approve this client.")}
+        ${ctaButton("Open Dashboard")}
+      `),
     })
     console.log("Admin notification email sent")
   } catch (err) {
@@ -47,21 +129,23 @@ export const sendAdminNotification = async (user) => {
   }
 }
 
-// notify client their registration is pending
+
+// ─── 2. Client — registration pending ──────────────────────────────────────
 export const sendClientApprovalPending = async (user) => {
   try {
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: `"Generation Iron 7" <${process.env.EMAIL_USER}>`,
       to: user.email,
-      subject: "Registration Received - GenerationIron7",
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>Welcome to GenerationIron7, ${user.full_name}!</h2>
-          <p>Your registration has been received and is awaiting approval from your trainer.</p>
-          <p>You will receive another email once your account has been approved.</p>
-          <p>If you have any questions contact your trainer directly.</p>
-        </div>
-      `,
+      subject: "Registration Received — Generation Iron 7",
+      html: emailTemplate(`
+        ${heading(`Welcome, ${user.full_name}!`)}
+        ${badge("Pending Approval", "#aaaaaa")}
+        <br/><br/>
+        ${paragraph("Your registration has been received. Your trainer will review your details and approve your account shortly.")}
+        ${paragraph("You'll receive another email as soon as your account is activated.")}
+        ${divider()}
+        ${paragraph("If you have any urgent questions, contact your trainer directly.")}
+      `),
     })
     console.log("Client pending email sent")
   } catch (err) {
@@ -69,35 +153,32 @@ export const sendClientApprovalPending = async (user) => {
   }
 }
 
-// notify client their account has been approved
+
+// ─── 3. Client — account approved ──────────────────────────────────────────
 export const sendClientApproved = async (user, plan) => {
   try {
     const startDate = new Date().toLocaleDateString("en-KE", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
+      day: "numeric", month: "long", year: "numeric",
     })
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: `"Generation Iron 7" <${process.env.EMAIL_USER}>`,
       to: user.email,
-      subject: "Account Approved - GenerationIron7",
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>Your account has been approved!</h2>
-          <p>Hi ${user.full_name}, your account has been approved by your trainer.</p>
-          <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-              <td style="padding: 8px; font-weight: bold;">Plan</td>
-              <td style="padding: 8px;">${plan.plan_type}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px; font-weight: bold;">Start Date</td>
-              <td style="padding: 8px;">${startDate}</td>
-            </tr>
-          </table>
-          <p>You can now log in to your dashboard to track your payments.</p>
-        </div>
-      `,
+      subject: "Account Approved — Generation Iron 7",
+      html: emailTemplate(`
+        ${heading("You're In! 💪")}
+        ${badge("Account Approved", "#6ee7b7")}
+        <br/><br/>
+        ${paragraph(`Hi ${user.full_name}, your account has been approved by your trainer. It's time to get to work.`)}
+        ${divider()}
+        ${infoTable([
+          ["Plan", plan.plan_type.charAt(0).toUpperCase() + plan.plan_type.slice(1)],
+          ["Start Date", startDate],
+          ["Status", "Active"],
+        ])}
+        ${divider()}
+        ${paragraph("Log in to your dashboard to track your payments and stay on top of your membership.")}
+        ${ctaButton("Go to Dashboard")}
+      `),
     })
     console.log("Client approval email sent")
   } catch (err) {
@@ -105,21 +186,28 @@ export const sendClientApproved = async (user, plan) => {
   }
 }
 
-// payment due reminder
+
+// ─── 4. Client — payment due reminder ──────────────────────────────────────
 export const sendPaymentReminder = async (user, dueDate) => {
   try {
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: `"Generation Iron 7" <${process.env.EMAIL_USER}>`,
       to: user.email,
-      subject: "Payment Due Reminder - GenerationIron7",
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>Payment Reminder</h2>
-          <p>Hi ${user.full_name}, your payment is due on <strong>${dueDate}</strong>.</p>
-          <p>Please ensure your payment is made on time to continue your sessions.</p>
-          <p>If you have any questions contact your trainer directly.</p>
-        </div>
-      `,
+      subject: "Payment Due Reminder — Generation Iron 7",
+      html: emailTemplate(`
+        ${heading("Payment Due Soon")}
+        ${badge("Action Required", "#fbbf24")}
+        <br/><br/>
+        ${paragraph(`Hi ${user.full_name}, your next membership payment is coming up.`)}
+        ${divider()}
+        ${infoTable([
+          ["Due Date", dueDate],
+          ["Status", "Upcoming"],
+        ])}
+        ${divider()}
+        ${paragraph("Please ensure your payment is made on time to continue your training sessions without interruption.")}
+        ${ctaButton("Pay Now")}
+      `),
     })
     console.log("Payment reminder email sent")
   } catch (err) {
@@ -127,24 +215,88 @@ export const sendPaymentReminder = async (user, dueDate) => {
   }
 }
 
-// payment overdue
+
+// ─── 5. Client — payment overdue ───────────────────────────────────────────
 export const sendPaymentOverdue = async (user) => {
   try {
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: `"Generation Iron 7" <${process.env.EMAIL_USER}>`,
       to: user.email,
-      subject: "Payment Overdue - GenerationIron7",
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>Payment Overdue</h2>
-          <p>Hi ${user.full_name}, your payment is overdue.</p>
-          <p>Please make your payment as soon as possible to continue your sessions.</p>
-          <p>Contact your trainer if you have any questions.</p>
-        </div>
-      `,
+      subject: "Payment Overdue — Generation Iron 7",
+      html: emailTemplate(`
+        ${heading("Payment Overdue")}
+        ${badge("Overdue", "#f87171")}
+        <br/><br/>
+        ${paragraph(`Hi ${user.full_name}, your membership payment is overdue.`)}
+        ${divider()}
+        ${paragraph("Please make your payment as soon as possible to avoid any disruption to your training sessions.")}
+        ${paragraph("Contact your trainer directly if you need to discuss your payment arrangements.")}
+        ${ctaButton("Pay Now")}
+      `),
     })
     console.log("Payment overdue email sent")
   } catch (err) {
     console.error("Error sending payment overdue email", err)
+  }
+}
+
+
+// ─── 6. Trainer — client cash payment request ──────────────────────────────
+export const sendCashPaymentRequestToTrainer = async (client, amount) => {
+  try {
+    await transporter.sendMail({
+      from: `"Generation Iron 7" <${process.env.EMAIL_USER}>`,
+      to: process.env.ADMIN_EMAIL,
+      subject: "Cash Payment Request — Generation Iron 7",
+      html: emailTemplate(`
+        ${heading("Cash Payment Request")}
+        ${badge("Needs Logging", "#fbbf24")}
+        <br/><br/>
+        ${paragraph("A client has requested to make a cash payment. Please log it in the dashboard once you receive the cash.")}
+        ${divider()}
+        ${infoTable([
+          ["Client", client.full_name],
+          ["Email", client.email],
+          ["Phone", client.phone],
+          ["Amount", `KES ${Number(amount).toLocaleString()}`],
+          ["Requested At", new Date().toLocaleString("en-KE")],
+        ])}
+        ${divider()}
+        ${ctaButton("Log Payment in Dashboard")}
+      `),
+    })
+    console.log("Cash payment request email sent to trainer")
+  } catch (err) {
+    console.error("Error sending cash payment request email to trainer", err)
+  }
+}
+
+
+// ─── 7. Client — cash payment request confirmation ─────────────────────────
+export const sendCashPaymentRequestToClient = async (client, amount) => {
+  try {
+    await transporter.sendMail({
+      from: `"Generation Iron 7" <${process.env.EMAIL_USER}>`,
+      to: client.email,
+      subject: "Cash Payment Request Received — Generation Iron 7",
+      html: emailTemplate(`
+        ${heading("Request Received")}
+        ${badge("Pending Cash Payment", "#93c5fd")}
+        <br/><br/>
+        ${paragraph(`Hi ${client.full_name}, your cash payment request has been sent to your trainer.`)}
+        ${divider()}
+        ${infoTable([
+          ["Amount", `KES ${Number(amount).toLocaleString()}`],
+          ["Requested At", new Date().toLocaleString("en-KE")],
+          ["Status", "Awaiting Trainer Confirmation"],
+        ])}
+        ${divider()}
+        ${paragraph("Your trainer will log the payment once they receive your cash. Your dashboard will update automatically after that.")}
+        ${paragraph("If you have any questions, contact your trainer directly.")}
+      `),
+    })
+    console.log("Cash payment confirmation email sent to client")
+  } catch (err) {
+    console.error("Error sending cash payment confirmation email to client", err)
   }
 }
