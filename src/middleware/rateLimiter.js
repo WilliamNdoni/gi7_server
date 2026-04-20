@@ -5,7 +5,7 @@ import rateLimit from "express-rate-limit"
 // Applied to all routes as a baseline — 100 requests per 15 minutes per IP
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: 200,
   standardHeaders: true,  // returns rate limit info in RateLimit-* headers
   legacyHeaders: false,
   message: { message: "Too many requests, please try again later." },
@@ -16,7 +16,7 @@ export const generalLimiter = rateLimit({
 // Covers login and register to prevent brute force and email bombing
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many attempts, please try again in 15 minutes." },
@@ -38,7 +38,7 @@ export const stkLimiter = rateLimit({
 // High enough not to affect normal use, low enough to block flooding
 export const refreshLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many refresh attempts, please log in again." },
@@ -47,7 +47,7 @@ export const refreshLimiter = rateLimit({
 // callback Limiter
 export const callbackLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 30, 
+  max: 50, 
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many requests" },
