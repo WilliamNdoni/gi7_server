@@ -201,12 +201,12 @@ export const getMpesaStatus = async (req, res) => {
 
 // POST /client/payments/stk/callback
 export const mpesaCallback = async (req, res) => {
-  
+
   try {
     const callback = req.body?.Body?.stkCallback;
 
     if (!callback) {
-      console.log("Invalid callback payload:", req.body);
+      console.log("Invalid callback payload received"); // Removed req.body (may load a very large body into memory)
       return res.status(200).json({ ResultCode: 0, ResultDesc: "Accepted" });
     }
 
