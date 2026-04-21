@@ -32,12 +32,6 @@ const createTables = async () => {
     `)
     console.log("Clients table ready")
 
-    // Adding a new column in client table
-    await pool.query(`
-      ALTER TABLE clients
-      ADD COLUMN IF NOT EXISTS first_due_date DATE DEFAULT NULL; 
-    `)
-    console.log("Old Clients table updated with first_due_date")
 
     // payments table
     await pool.query(`
