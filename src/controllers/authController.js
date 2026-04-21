@@ -53,8 +53,8 @@ export const register = async (req, res) => {
       [user.id]
     )
 
-    await sendAdminNotification(user)
-    await sendClientApprovalPending(user)
+    sendAdminNotification(user)
+    sendClientApprovalPending(user)
 
     res.status(201).json({
       message: "Registration successful. Awaiting trainer approval.",
