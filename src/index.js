@@ -19,6 +19,10 @@ const app = express()
 const PORT = process.env.PORT || 3000
 
 // middleware
+
+// trust Railway's proxy so rate limiter gets the real client IP
+app.set("trust proxy", 1)
+
 app.use(cors({
   origin: process.env.CLIENT_URL,
   credentials: true,
