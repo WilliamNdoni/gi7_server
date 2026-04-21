@@ -14,6 +14,9 @@ const transporter = nodemailer.createTransport({
 // getting the image logo from cloudinary
 const LOGO_URL = "https://res.cloudinary.com/daqnekpeo/image/upload/v1776677303/G7_logo_gkuex4.jpg"
 
+// frontend base URL — falls back to production if env var not set
+const FRONTEND_URL = process.env.FRONTEND_URL
+
 // ─── Shared email wrapper ───────────────────────────────────────────────────
 const emailTemplate = (bodyContent) => `
 <!DOCTYPE html>
@@ -92,7 +95,7 @@ const infoTable = (rows) => `
   </table>
 `
 
-const ctaButton = (text, url = "#") =>
+const ctaButton = (text, url) =>
   `<div style="text-align:center;margin:28px 0 8px;">
     <a href="${url}" style="display:inline-block;background-color:#ffffff;color:#000000;font-weight:bold;font-size:14px;padding:14px 36px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">${text}</a>
   </div>`
@@ -120,7 +123,7 @@ export const sendAdminNotification = async (user) => {
         ])}
         ${divider()}
         ${paragraph("Log in to your dashboard to review and approve this client.")}
-        ${ctaButton("Open Dashboard")}
+        ${ctaButton("Open Dashboard", `${FRONTEND_URL}/trainer/pending`)}
       `),
     })
     console.log("Admin notification email sent")
@@ -177,7 +180,7 @@ export const sendClientApproved = async (user, plan) => {
         ])}
         ${divider()}
         ${paragraph("Log in to your dashboard to track your payments and stay on top of your membership.")}
-        ${ctaButton("Go to Dashboard")}
+        ${ctaButton("Go to Dashboard", `${FRONTEND_URL}/client/dashboard`)}
       `),
     })
     console.log("Client approval email sent")
@@ -206,7 +209,7 @@ export const sendPaymentReminder = async (user, dueDate) => {
         ])}
         ${divider()}
         ${paragraph("Please ensure your payment is made on time to continue your training sessions without interruption.")}
-        ${ctaButton("Pay Now")}
+        ${ctaButton("Pay Now", `${FRONTEND_URL}/client/payments`)}
       `),
     })
     console.log("Payment reminder email sent")
@@ -231,7 +234,7 @@ export const sendPaymentOverdue = async (user) => {
         ${divider()}
         ${paragraph("Please make your payment as soon as possible to avoid any disruption to your training sessions.")}
         ${paragraph("Contact your trainer directly if you need to discuss your payment arrangements.")}
-        ${ctaButton("Pay Now")}
+        ${ctaButton("Pay Now", `${FRONTEND_URL}/client/payments`)}
       `),
     })
     console.log("Payment overdue email sent")
@@ -262,7 +265,7 @@ export const sendCashPaymentRequestToTrainer = async (client, amount) => {
           ["Requested At", new Date().toLocaleString("en-KE")],
         ])}
         ${divider()}
-        ${ctaButton("Log Payment in Dashboard")}
+        ${ctaButton("Log Payment in Dashboard", `${FRONTEND_URL}/trainer/payments`)}
       `),
     })
     console.log("Cash payment request email sent to trainer")
