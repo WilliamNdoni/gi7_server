@@ -1,11 +1,10 @@
-import { TransactionalEmailsApi, SendSmtpEmail } from "@getbrevo/brevo"
+import { BrevoClient } from "@getbrevo/brevo"
 import dotenv from "dotenv"
 
 dotenv.config()
 
-// initialize Brevo API client
-const apiInstance = new TransactionalEmailsApi()
-apiInstance.authentications["api-key"].apiKey = process.env.BREVO_API_KEY
+// initialize Brevo client
+const brevo = new BrevoClient({ apiKey: process.env.BREVO_API_KEY })
 
 // getting the image logo from cloudinary
 const LOGO_URL = "https://res.cloudinary.com/daqnekpeo/image/upload/v1776677303/G7_logo_gkuex4.jpg"
@@ -18,15 +17,15 @@ const SENDER = { name: "Generation Iron 7", email: process.env.EMAIL_USER }
 
 // ─── helper to send email ────────────────────────────────────────────────────
 const sendEmail = async ({ to, subject, html }) => {
-  const email = new SendSmtpEmail()
-  email.sender = SENDER
-  email.to = Array.isArray(to) ? to : [{ email: to }]
-  email.cc = process.env.ADMIN_EMAIL
-    .split(",")
-    .map((e) => ({ email: e.trim() }))
-  email.subject = subject
-  email.htmlContent = html
-  return apiInstance.sendTransacEmail(email)
+  return brevo.transactionalEmails.sendTransacEmail({
+    sender: SENDER,
+    to: Array.isArray(to) ? to : [{ email: to }],
+    cc: process.env.ADMIN_EMAIL
+      .split(",")
+      .map((e) => ({ email: e.trim() })),
+    subject,
+    htmlContent: html,
+  })
 }
 
 // ─── Shared email wrapper ───────────────────────────────────────────────────
