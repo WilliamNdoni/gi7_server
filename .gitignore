@@ -139,4 +139,5 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 # Extra files
 src/services/mpesaTest.js
+src/services/emailService_prev.js
 src/config/seed.js

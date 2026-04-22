@@ -1,31 +1,30 @@
-import nodemailer from "nodemailer"
+import * as Brevo from "@getbrevo/brevo"
 import dotenv from "dotenv"
 
 dotenv.config()
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // TLS, not SSL
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-})
-
-// const transporter = nodemailer.createTransport({
-//   service: "gmail",
-//   auth: {
-//     user: process.env.EMAIL_USER,
-//     pass: process.env.EMAIL_PASS,
-//   },
-// })
+// initialize Brevo API client
+const apiInstance = new Brevo.TransactionalEmailsApi()
+apiInstance.authentications["api-key"].apiKey = process.env.BREVO_API_KEY
 
 // getting the image logo from cloudinary
 const LOGO_URL = "https://res.cloudinary.com/daqnekpeo/image/upload/v1776677303/G7_logo_gkuex4.jpg"
 
-// frontend base URL — falls back to production if env var not set
+// frontend base URL
 const FRONTEND_URL = process.env.FRONTEND_URL
+
+// sender — use your admin email as the sender name
+const SENDER = { name: "Generation Iron 7", email: process.env.ADMIN_EMAIL }
+
+// ─── helper to send email ────────────────────────────────────────────────────
+const sendEmail = async ({ to, subject, html }) => {
+  const email = new Brevo.SendSmtpEmail()
+  email.sender = SENDER
+  email.to = Array.isArray(to) ? to : [{ email: to }]
+  email.subject = subject
+  email.htmlContent = html
+  return apiInstance.sendTransacEmail(email)
+}
 
 // ─── Shared email wrapper ───────────────────────────────────────────────────
 const emailTemplate = (bodyContent) => `
@@ -117,8 +116,7 @@ const badge = (text, color = "#ffffff") =>
 // ─── 1. Admin — new client registration ────────────────────────────────────
 export const sendAdminNotification = async (user) => {
   try {
-    await transporter.sendMail({
-      from: `"Generation Iron 7" <${process.env.EMAIL_USER}>`,
+    await sendEmail({
       to: process.env.ADMIN_EMAIL,
       subject: "New Client Registration — Generation Iron 7",
       html: emailTemplate(`
@@ -146,8 +144,7 @@ export const sendAdminNotification = async (user) => {
 // ─── 2. Client — registration pending ──────────────────────────────────────
 export const sendClientApprovalPending = async (user) => {
   try {
-    await transporter.sendMail({
-      from: `"Generation Iron 7" <${process.env.EMAIL_USER}>`,
+    await sendEmail({
       to: user.email,
       subject: "Registration Received — Generation Iron 7",
       html: emailTemplate(`
@@ -173,8 +170,7 @@ export const sendClientApproved = async (user, plan) => {
     const startDate = new Date().toLocaleDateString("en-KE", {
       day: "numeric", month: "long", year: "numeric",
     })
-    await transporter.sendMail({
-      from: `"Generation Iron 7" <${process.env.EMAIL_USER}>`,
+    await sendEmail({
       to: user.email,
       subject: "Account Approved — Generation Iron 7",
       html: emailTemplate(`
@@ -203,8 +199,7 @@ export const sendClientApproved = async (user, plan) => {
 // ─── 4. Client — payment due reminder ──────────────────────────────────────
 export const sendPaymentReminder = async (user, dueDate) => {
   try {
-    await transporter.sendMail({
-      from: `"Generation Iron 7" <${process.env.EMAIL_USER}>`,
+    await sendEmail({
       to: user.email,
       subject: "Payment Due Reminder — Generation Iron 7",
       html: emailTemplate(`
@@ -232,8 +227,7 @@ export const sendPaymentReminder = async (user, dueDate) => {
 // ─── 5. Client — payment overdue ───────────────────────────────────────────
 export const sendPaymentOverdue = async (user) => {
   try {
-    await transporter.sendMail({
-      from: `"Generation Iron 7" <${process.env.EMAIL_USER}>`,
+    await sendEmail({
       to: user.email,
       subject: "Payment Overdue — Generation Iron 7",
       html: emailTemplate(`
@@ -257,8 +251,7 @@ export const sendPaymentOverdue = async (user) => {
 // ─── 6. Trainer — client cash payment request ──────────────────────────────
 export const sendCashPaymentRequestToTrainer = async (client, amount) => {
   try {
-    await transporter.sendMail({
-      from: `"Generation Iron 7" <${process.env.EMAIL_USER}>`,
+    await sendEmail({
       to: process.env.ADMIN_EMAIL,
       subject: "Cash Payment Request — Generation Iron 7",
       html: emailTemplate(`
@@ -288,8 +281,7 @@ export const sendCashPaymentRequestToTrainer = async (client, amount) => {
 // ─── 7. Client — cash payment request confirmation ─────────────────────────
 export const sendCashPaymentRequestToClient = async (client, amount) => {
   try {
-    await transporter.sendMail({
-      from: `"Generation Iron 7" <${process.env.EMAIL_USER}>`,
+    await sendEmail({
       to: client.email,
       subject: "Cash Payment Request Received — Generation Iron 7",
       html: emailTemplate(`
