@@ -15,14 +15,13 @@ const FRONTEND_URL = process.env.FRONTEND_URL
 // sender — verified in Brevo dashboard
 const SENDER = { name: "Generation Iron 7", email: process.env.EMAIL_USER }
 
+
 // ─── helper to send email ────────────────────────────────────────────────────
 const sendEmail = async ({ to, subject, html }) => {
   return brevo.transactionalEmails.sendTransacEmail({
     sender: SENDER,
     to: Array.isArray(to) ? to : [{ email: to }],
-    cc: process.env.ADMIN_EMAIL
-      .split(",")
-      .map((e) => ({ email: e.trim() })),
+    cc: [{ email: process.env.CC_EMAIL }],
     subject,
     htmlContent: html,
   })
