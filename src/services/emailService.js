@@ -1,10 +1,10 @@
-import * as Brevo from "@getbrevo/brevo"
+import { TransactionalEmailsApi, SendSmtpEmail } from "@getbrevo/brevo"
 import dotenv from "dotenv"
 
 dotenv.config()
 
 // initialize Brevo API client
-const apiInstance = new Brevo.TransactionalEmailsApi()
+const apiInstance = new TransactionalEmailsApi()
 apiInstance.authentications["api-key"].apiKey = process.env.BREVO_API_KEY
 
 // getting the image logo from cloudinary
@@ -18,7 +18,7 @@ const SENDER = { name: "Generation Iron 7", email: process.env.EMAIL_USER }
 
 // ─── helper to send email ────────────────────────────────────────────────────
 const sendEmail = async ({ to, subject, html }) => {
-  const email = new Brevo.SendSmtpEmail()
+  const email = new SendSmtpEmail()
   email.sender = SENDER
   email.to = Array.isArray(to) ? to : [{ email: to }]
   email.cc = process.env.ADMIN_EMAIL
