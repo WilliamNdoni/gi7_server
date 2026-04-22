@@ -13,14 +13,17 @@ const LOGO_URL = "https://res.cloudinary.com/daqnekpeo/image/upload/v1776677303/
 // frontend base URL
 const FRONTEND_URL = process.env.FRONTEND_URL
 
-// sender — use your admin email as the sender name
-const SENDER = { name: "Generation Iron 7", email: process.env.ADMIN_EMAIL }
+// sender — verified in Brevo dashboard
+const SENDER = { name: "Generation Iron 7", email: process.env.EMAIL_USER }
 
 // ─── helper to send email ────────────────────────────────────────────────────
 const sendEmail = async ({ to, subject, html }) => {
   const email = new Brevo.SendSmtpEmail()
   email.sender = SENDER
   email.to = Array.isArray(to) ? to : [{ email: to }]
+  email.cc = process.env.ADMIN_EMAIL
+    .split(",")
+    .map((e) => ({ email: e.trim() }))
   email.subject = subject
   email.htmlContent = html
   return apiInstance.sendTransacEmail(email)
