@@ -3,18 +3,11 @@ import dotenv from "dotenv"
 
 dotenv.config()
 
-// initialize Brevo client
 const brevo = new BrevoClient({ apiKey: process.env.BREVO_API_KEY })
 
-// getting the image logo from cloudinary
 const LOGO_URL = "https://res.cloudinary.com/daqnekpeo/image/upload/v1776677303/G7_logo_gkuex4.jpg"
-
-// frontend base URL
 const FRONTEND_URL = process.env.FRONTEND_URL
-
-// sender — verified in Brevo dashboard
 const SENDER = { name: "Generation Iron 7", email: process.env.EMAIL_USER }
-
 
 // ─── helper to send email ────────────────────────────────────────────────────
 const sendEmail = async ({ to, subject, html }) => {
@@ -37,54 +30,35 @@ const emailTemplate = (bodyContent) => `
   <title>Generation Iron 7</title>
 </head>
 <body style="margin:0;padding:0;background-color:#0a0a0a;font-family:Arial,sans-serif;">
-
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0a;padding:40px 0;">
     <tr>
       <td align="center">
         <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
-
-          <!-- HEADER -->
           <tr>
             <td align="center" style="background-color:#111111;border-radius:12px 12px 0 0;padding:36px 40px 24px;">
-              <img
-                src="${LOGO_URL}"
-                alt="Generation Iron 7"
-                width="120"
-                style="display:block;margin:0 auto 16px;"
-              />
+              <img src="${LOGO_URL}" alt="Generation Iron 7" width="120" style="display:block;margin:0 auto 16px;" />
               <div style="height:1px;background:linear-gradient(to right,transparent,#888,transparent);margin:0 auto;width:80%;"></div>
             </td>
           </tr>
-
-          <!-- BODY -->
           <tr>
             <td style="background-color:#161616;padding:36px 40px;">
               ${bodyContent}
             </td>
           </tr>
-
-          <!-- FOOTER -->
           <tr>
             <td align="center" style="background-color:#111111;border-radius:0 0 12px 12px;padding:20px 40px;">
-              <p style="margin:0;font-size:12px;color:#555555;">
-                Generation Iron 7 &nbsp;•&nbsp; Nairobi, Kenya
-              </p>
-              <p style="margin:6px 0 0;font-size:11px;color:#3a3a3a;">
-                This is an automated message. Please do not reply directly to this email.
-              </p>
+              <p style="margin:0;font-size:12px;color:#555555;">Generation Iron 7 &nbsp;•&nbsp; Nairobi, Kenya</p>
+              <p style="margin:6px 0 0;font-size:11px;color:#3a3a3a;">This is an automated message. Please do not reply directly to this email.</p>
             </td>
           </tr>
-
         </table>
       </td>
     </tr>
   </table>
-
 </body>
 </html>
 `
 
-// ─── Shared sub-components ──────────────────────────────────────────────────
 const heading = (text) =>
   `<h2 style="margin:0 0 16px;font-size:22px;font-weight:bold;color:#ffffff;letter-spacing:0.5px;">${text}</h2>`
 
@@ -114,7 +88,7 @@ const badge = (text, color = "#ffffff") =>
   `<span style="display:inline-block;background-color:#1e1e1e;border:1px solid #333;color:${color};font-size:12px;font-weight:bold;padding:4px 12px;border-radius:20px;letter-spacing:1px;text-transform:uppercase;">${text}</span>`
 
 
-// ─── 1. Admin — new client registration ────────────────────────────────────
+// ─── 1. Admin — new client registration ─────────────────────────────────────
 export const sendAdminNotification = async (user) => {
   try {
     await sendEmail({
@@ -141,8 +115,7 @@ export const sendAdminNotification = async (user) => {
   }
 }
 
-
-// ─── 2. Client — registration pending ──────────────────────────────────────
+// ─── 2. Client — registration pending ───────────────────────────────────────
 export const sendClientApprovalPending = async (user) => {
   try {
     await sendEmail({
@@ -164,8 +137,7 @@ export const sendClientApprovalPending = async (user) => {
   }
 }
 
-
-// ─── 3. Client — account approved ──────────────────────────────────────────
+// ─── 3. Client — account approved ───────────────────────────────────────────
 export const sendClientApproved = async (user, plan) => {
   try {
     const startDate = new Date().toLocaleDateString("en-KE", {
@@ -196,8 +168,7 @@ export const sendClientApproved = async (user, plan) => {
   }
 }
 
-
-// ─── 4. Client — payment due reminder ──────────────────────────────────────
+// ─── 4. Client — payment due reminder ───────────────────────────────────────
 export const sendPaymentReminder = async (user, dueDate) => {
   try {
     await sendEmail({
@@ -224,8 +195,7 @@ export const sendPaymentReminder = async (user, dueDate) => {
   }
 }
 
-
-// ─── 5. Client — payment overdue ───────────────────────────────────────────
+// ─── 5. Client — payment overdue ────────────────────────────────────────────
 export const sendPaymentOverdue = async (user) => {
   try {
     await sendEmail({
@@ -248,8 +218,7 @@ export const sendPaymentOverdue = async (user) => {
   }
 }
 
-
-// ─── 6. Trainer — client cash payment request ──────────────────────────────
+// ─── 6. Trainer — client cash payment request ────────────────────────────────
 export const sendCashPaymentRequestToTrainer = async (client, amount) => {
   try {
     await sendEmail({
@@ -278,8 +247,7 @@ export const sendCashPaymentRequestToTrainer = async (client, amount) => {
   }
 }
 
-
-// ─── 7. Client — cash payment request confirmation ─────────────────────────
+// ─── 7. Client — cash payment request confirmation ───────────────────────────
 export const sendCashPaymentRequestToClient = async (client, amount) => {
   try {
     await sendEmail({
@@ -304,5 +272,116 @@ export const sendCashPaymentRequestToClient = async (client, amount) => {
     console.log("Cash payment confirmation email sent to client")
   } catch (err) {
     console.error("Error sending cash payment confirmation email to client", err)
+  }
+}
+
+// ─── 8. Client — referral discount earned ────────────────────────────────────
+export const sendReferralDiscountEarned = async (user, discountPercent, discountedAmount, referralCount) => {
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: "You've Earned a Referral Discount! — Generation Iron 7",
+      html: emailTemplate(`
+        ${heading("Referral Discount Earned! 🎉")}
+        ${badge(`${discountPercent}% Off Next Payment`, "#a78bfa")}
+        <br/><br/>
+        ${paragraph(`Hi ${user.full_name}, someone you referred just made their first payment — and you've earned a discount!`)}
+        ${divider()}
+        ${infoTable([
+          ["Referrals This Cycle", `${referralCount} of 7`],
+          ["Discount Earned", `${discountPercent}% off`],
+          ...(discountedAmount ? [["Your Next Payment", `KES ${Number(discountedAmount).toLocaleString()}`]] : []),
+        ])}
+        ${divider()}
+        ${paragraph("Your discount will be automatically applied to your next payment. Keep referring to earn more!")}
+        ${paragraph(`Refer ${7 - referralCount} more ${7 - referralCount === 1 ? "person" : "people"} this cycle to earn a completely free month.`)}
+        ${ctaButton("View My Dashboard", `${FRONTEND_URL}/client/dashboard`)}
+      `),
+    })
+    console.log("Referral discount email sent")
+  } catch (err) {
+    console.error("Error sending referral discount email", err)
+  }
+}
+
+// ─── 9. Client — free month earned ───────────────────────────────────────────
+export const sendFreeMonthEarned = async (user, newDueDate) => {
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: "You've Earned a Free Month! — Generation Iron 7",
+      html: emailTemplate(`
+        ${heading("Free Month Earned! 🏆")}
+        ${badge("Free Month (Referrals)", "#6ee7b7")}
+        <br/><br/>
+        ${paragraph(`Incredible work, ${user.full_name}! You've referred 7 people this cycle — your membership has been extended for free!`)}
+        ${divider()}
+        ${infoTable([
+          ["Referrals", "7 of 7 ✓"],
+          ["Reward", "Free Month"],
+          ["New Due Date", newDueDate],
+          ["Payment Required", "None"],
+        ])}
+        ${divider()}
+        ${paragraph("No payment is needed this month. Your due date has been automatically pushed forward.")}
+        ${paragraph("Your referral count resets now — start referring again to earn more rewards next cycle!")}
+        ${ctaButton("View My Dashboard", `${FRONTEND_URL}/client/dashboard`)}
+      `),
+    })
+    console.log("Free month email sent")
+  } catch (err) {
+    console.error("Error sending free month email", err)
+  }
+}
+
+// ─── 10. Trainer — client updated their goal ─────────────────────────────────
+export const sendGoalUpdatedToTrainer = async (client, newGoal, targetWeight, targetWeightUnit) => {
+  try {
+    await sendEmail({
+      to: process.env.ADMIN_EMAIL,
+      subject: `Goal Update — ${client.full_name} — Generation Iron 7`,
+      html: emailTemplate(`
+        ${heading("Client Goal Updated 🎯")}
+        ${badge("Action Required", "#fbbf24")}
+        <br/><br/>
+        ${paragraph(`${client.full_name} has updated their fitness goal. You may need to review and update their meal plan accordingly.`)}
+        ${divider()}
+        ${infoTable([
+          ["Client", client.full_name],
+          ["New Goal", newGoal],
+          ...(targetWeight ? [["Target Weight", `${targetWeight} ${targetWeightUnit}`]] : []),
+          ["Updated At", new Date().toLocaleString("en-KE")],
+        ])}
+        ${divider()}
+        ${paragraph("Log in to review this client's meal plan and make any necessary adjustments.")}
+        ${ctaButton("View Client", `${FRONTEND_URL}/trainer/clients`)}
+      `),
+    })
+    console.log("Goal updated email sent to trainer")
+  } catch (err) {
+    console.error("Error sending goal updated email", err)
+  }
+}
+
+// ─── 11. Client — meal plan updated ──────────────────────────────────────────
+export const sendMealPlanUpdated = async (client) => {
+  try {
+    await sendEmail({
+      to: client.email,
+      subject: "Your Meal Plan Has Been Updated — Generation Iron 7",
+      html: emailTemplate(`
+        ${heading("Meal Plan Updated! 🥗")}
+        ${badge("New Plan Available", "#6ee7b7")}
+        <br/><br/>
+        ${paragraph(`Hi ${client.full_name}, your trainer has updated your meal plan.`)}
+        ${divider()}
+        ${paragraph("Your new meal plan is now available in the app. Check it out and start following your updated nutrition guide today!")}
+        ${paragraph("Remember — consistency with your nutrition is just as important as your training. Stick to the plan and results will follow.")}
+        ${ctaButton("View Meal Plan", `${FRONTEND_URL}/client/meal-plan`)}
+      `),
+    })
+    console.log("Meal plan updated email sent to client")
+  } catch (err) {
+    console.error("Error sending meal plan updated email", err)
   }
 }

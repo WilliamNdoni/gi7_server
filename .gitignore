@@ -141,3 +141,4 @@ vite.config.ts.timestamp-*
 src/services/mpesaTest.js
 src/services/emailService_prev.js
 src/config/seed.js
+src/config/droptables.js

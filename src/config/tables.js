@@ -32,6 +32,16 @@ const createTables = async () => {
     `)
     console.log("Clients table ready")
 
+    // new columns on clients table
+    await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS monthly_rate DECIMAL(10,2) DEFAULT NULL`)
+    await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS referral_code VARCHAR(20) UNIQUE DEFAULT NULL`)
+    await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS referred_by VARCHAR(20) DEFAULT NULL`)
+    await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS pending_discount_percent INTEGER DEFAULT 0`)
+    await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS referral_free_month_notified BOOLEAN DEFAULT false`)
+    await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS goal TEXT DEFAULT NULL`)
+    await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS target_weight DECIMAL(5,2) DEFAULT NULL`)
+    await pool.query(`ALTER TABLE clients ADD COLUMN IF NOT EXISTS target_weight_unit VARCHAR(5) DEFAULT 'kg'`)
+    console.log("Clients table updated with referral, discount, and goal columns")
 
     // payments table
     await pool.query(`
@@ -49,6 +59,12 @@ const createTables = async () => {
     `)
     console.log("Payments table ready")
 
+    // new columns on payments table
+    await pool.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS payment_period INTEGER DEFAULT 1`)
+    await pool.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS discount_percent INTEGER DEFAULT 0`)
+    await pool.query(`ALTER TABLE payments ADD COLUMN IF NOT EXISTS original_amount DECIMAL(10,2) DEFAULT NULL`)
+    console.log("Payments table updated with discount columns")
+
     // mpesa stk requests table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS mpesa_stk_requests (
@@ -63,6 +79,8 @@ const createTables = async () => {
     `)
     console.log("mpesa_stk table ready")
 
+    await pool.query(`ALTER TABLE mpesa_stk_requests ADD COLUMN IF NOT EXISTS payment_period INTEGER DEFAULT 1`)
+
     // refresh tokens table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS refresh_tokens (
@@ -74,6 +92,71 @@ const createTables = async () => {
       )
     `)
     console.log("refresh_tokens table ready")
+
+    // referrals table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS referrals (
+        id SERIAL PRIMARY KEY,
+        referrer_id INTEGER REFERENCES clients(id) ON DELETE CASCADE,
+        referred_id INTEGER REFERENCES clients(id) ON DELETE CASCADE,
+        status VARCHAR(20) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    console.log("Referrals table ready")
+
+    // meal plans table — one per client
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS meal_plans (
+        id SERIAL PRIMARY KEY,
+        client_id INTEGER REFERENCES clients(id) ON DELETE CASCADE UNIQUE,
+        goal VARCHAR(100) DEFAULT NULL,
+        meals_per_day INTEGER DEFAULT 3 CHECK (meals_per_day BETWEEN 2 AND 5),
+        notes TEXT DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `)
+    console.log("Meal plans table ready")
+
+    // meals within a plan
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS meals (
+        id SERIAL PRIMARY KEY,
+        meal_plan_id INTEGER REFERENCES meal_plans(id) ON DELETE CASCADE,
+        meal_number INTEGER NOT NULL,
+        meal_name VARCHAR(100) NOT NULL,
+        items JSONB NOT NULL
+      )
+    `)
+    console.log("Meals table ready")
+
+    // meal completions per day
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS meal_completions (
+        id SERIAL PRIMARY KEY,
+        client_id INTEGER REFERENCES clients(id) ON DELETE CASCADE,
+        meal_id INTEGER REFERENCES meals(id) ON DELETE CASCADE,
+        completed_date DATE DEFAULT CURRENT_DATE,
+        completed_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(client_id, meal_id, completed_date)
+      )
+    `)
+    console.log("Meal completions table ready")
+
+    // weight logs table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS weight_logs (
+        id SERIAL PRIMARY KEY,
+        client_id INTEGER REFERENCES clients(id) ON DELETE CASCADE,
+        weight DECIMAL(5,2) NOT NULL,
+        unit VARCHAR(5) DEFAULT 'kg',
+        notes TEXT DEFAULT NULL,
+        logged_at DATE DEFAULT CURRENT_DATE,
+        UNIQUE(client_id, logged_at)
+      )
+    `)
+    console.log("Weight logs table ready")
 
   } catch (err) {
     console.error("Error creating tables", err)

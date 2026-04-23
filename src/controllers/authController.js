@@ -15,17 +15,25 @@ const generateAccessToken = (user) =>
 
 const generateRefreshToken = () => crypto.randomBytes(64).toString("hex")
 
+// generate unique referral code e.g. GI7-A1B2C3
+const generateReferralCode = (name) => {
+  const prefix = "GI7"
+  const namePart = name.split(" ")[0].toUpperCase().slice(0, 3)
+  const random = crypto.randomBytes(3).toString("hex").toUpperCase()
+  return `${prefix}-${namePart}-${random}`
+}
+
 const REFRESH_COOKIE_OPTIONS = {
-  httpOnly: true,         // JS cannot read this cookie
-  secure: process.env.NODE_ENV === "production", // HTTPS only in production
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
   sameSite: "strict",
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+  maxAge: 7 * 24 * 60 * 60 * 1000,
 }
 
 // ─── register ───────────────────────────────────────────────────────────────
 
 export const register = async (req, res) => {
-  const { fullName, email, phone, password } = req.body
+  const { fullName, email, phone, password, referralCode } = req.body
 
   try {
     const existingUser = await pool.query(
@@ -35,6 +43,19 @@ export const register = async (req, res) => {
 
     if (existingUser.rows.length > 0) {
       return res.status(400).json({ message: "Email already registered" })
+    }
+
+    // validate referral code if provided
+    let referredBy = null
+    if (referralCode) {
+      const referrerResult = await pool.query(
+        "SELECT id FROM clients WHERE referral_code = $1",
+        [referralCode.trim().toUpperCase()]
+      )
+      if (referrerResult.rows.length === 0) {
+        return res.status(400).json({ message: "Invalid referral code" })
+      }
+      referredBy = referralCode.trim().toUpperCase()
     }
 
     const passwordHash = await bcrypt.hash(password, 10)
@@ -48,9 +69,13 @@ export const register = async (req, res) => {
 
     const user = newUser.rows[0]
 
+    // generate unique referral code for this new client
+    const newReferralCode = generateReferralCode(fullName)
+
     await pool.query(
-      `INSERT INTO clients (user_id, status) VALUES ($1, 'pending')`,
-      [user.id]
+      `INSERT INTO clients (user_id, status, referral_code, referred_by)
+       VALUES ($1, 'pending', $2, $3)`,
+      [user.id, newReferralCode, referredBy]
     )
 
     await sendAdminNotification(user)
@@ -87,7 +112,6 @@ export const login = async (req, res) => {
       return res.status(400).json({ message: "Invalid email or password" })
     }
 
-    // client status checks
     if (user.role === "client") {
       const client = await pool.query(
         "SELECT status FROM clients WHERE user_id = $1",
@@ -107,19 +131,16 @@ export const login = async (req, res) => {
       }
     }
 
-    // generate tokens
     const accessToken = generateAccessToken(user)
     const refreshToken = generateRefreshToken()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
-    // store refresh token in DB
     await pool.query(
       `INSERT INTO refresh_tokens (user_id, token, expires_at)
        VALUES ($1, $2, $3)`,
       [user.id, refreshToken, expiresAt]
     )
 
-    // send refresh token as httpOnly cookie
     res.cookie("refreshToken", refreshToken, REFRESH_COOKIE_OPTIONS)
 
     res.json({
@@ -148,7 +169,6 @@ export const refresh = async (req, res) => {
   }
 
   try {
-    // look up token in DB
     const result = await pool.query(
       `SELECT rt.*, u.id as user_id, u.role
        FROM refresh_tokens rt
@@ -164,7 +184,6 @@ export const refresh = async (req, res) => {
 
     const { user_id, role } = result.rows[0]
 
-    // check client is still active
     if (role === "client") {
       const client = await pool.query(
         "SELECT status FROM clients WHERE user_id = $1",
@@ -179,7 +198,6 @@ export const refresh = async (req, res) => {
       }
     }
 
-    // rotate refresh token — issue a new one, invalidate the old one
     const newRefreshToken = generateRefreshToken()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
 
