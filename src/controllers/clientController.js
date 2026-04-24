@@ -25,9 +25,11 @@ export const getDashboard = async (req, res) => {
       `SELECT u.id, u.full_name, u.email, u.phone,
               c.id as client_id, c.plan_type, c.start_date, c.status,
               c.monthly_rate, c.pending_discount_percent, c.referral_code,
-              c.referral_free_month_notified, c.goal, c.target_weight, c.target_weight_unit
+              c.referral_free_month_notified, c.goal, c.target_weight, c.target_weight_unit,
+              t.phone as trainer_phone, t.full_name as trainer_name
        FROM users u
        JOIN clients c ON u.id = c.user_id
+       LEFT JOIN users t ON c.trainer_id = t.id
        WHERE u.id = $1`,
       [req.user.id]
     )
@@ -76,7 +78,10 @@ export const getDashboard = async (req, res) => {
 export const getPaymentHistory = async (req, res) => {
   try {
     const clientResult = await pool.query(
-      `SELECT c.id as client_id FROM clients c WHERE c.user_id = $1`,
+      `SELECT c.id as client_id, t.phone as trainer_phone, t.full_name as trainer_name
+       FROM clients c
+       LEFT JOIN users t ON c.trainer_id = t.id
+       WHERE c.user_id = $1`,
       [req.user.id]
     )
 
@@ -497,7 +502,10 @@ export const updateGoal = async (req, res) => {
 export const getMealPlan = async (req, res) => {
   try {
     const clientResult = await pool.query(
-      `SELECT c.id as client_id FROM clients c WHERE c.user_id = $1`,
+      `SELECT c.id as client_id, t.phone as trainer_phone, t.full_name as trainer_name
+        FROM clients c
+        LEFT JOIN users t ON c.trainer_id = t.id
+        WHERE c.user_id = $1`,
       [req.user.id]
     )
 
@@ -505,7 +513,7 @@ export const getMealPlan = async (req, res) => {
       return res.status(404).json({ message: "Client not found" })
     }
 
-    const { client_id } = clientResult.rows[0]
+    const { client_id, trainer_phone, trainer_name } = clientResult.rows[0]
 
     const planResult = await pool.query(
       `SELECT * FROM meal_plans WHERE client_id = $1`,
@@ -513,7 +521,7 @@ export const getMealPlan = async (req, res) => {
     )
 
     if (planResult.rows.length === 0) {
-      return res.json({ plan: null })
+      return res.json({ plan: null, trainerPhone: trainer_phone, trainerName: trainer_name })
     }
 
     const plan = planResult.rows[0]
@@ -541,6 +549,8 @@ export const getMealPlan = async (req, res) => {
           completed: completedMealIds.includes(meal.id),
         })),
       },
+      trainerPhone: trainer_phone,
+      trainerName: trainer_name,
     })
   } catch (err) {
     console.error("Get meal plan error", err)

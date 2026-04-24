@@ -9,21 +9,34 @@ const startCronJobs = () => {
     console.log("Running daily payment check...")
 
     try {
-      // get all active clients with their latest payment
+      // get all active clients with their latest payment due date
+      // falls back to first_due_date if no payments exist
       const result = await pool.query(
-        `SELECT DISTINCT ON (c.id)
-                u.full_name, u.email,
-                p.due_date, p.status as payment_status
+        `SELECT
+          u.full_name,
+          u.email,
+          c.first_due_date,
+          COALESCE(
+            (SELECT due_date FROM payments
+             WHERE client_id = c.id
+             ORDER BY due_date DESC
+             LIMIT 1),
+            c.first_due_date
+          ) AS due_date
          FROM users u
          JOIN clients c ON u.id = c.user_id
-         JOIN payments p ON c.id = p.client_id
          WHERE c.status = 'active'
-         ORDER BY c.id, p.due_date DESC`
+         AND (
+           EXISTS (SELECT 1 FROM payments WHERE client_id = c.id)
+           OR c.first_due_date IS NOT NULL
+         )`
       )
 
       const clients = result.rows
 
       for (const client of clients) {
+        if (!client.due_date) continue
+
         const now = new Date()
         const dueDate = new Date(client.due_date)
         const daysLeft = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24))
